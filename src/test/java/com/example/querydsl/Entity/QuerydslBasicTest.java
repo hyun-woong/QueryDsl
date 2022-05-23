@@ -237,4 +237,34 @@ public class QuerydslBasicTest {
         Assertions.assertThat(teamB.get(member.age.avg())).isEqualTo(35);
 
     }
+
+    // 팀 A에 소속된 모든 회원
+    @Test
+    public void join() {
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .join(member.team, QTeam.team)
+                .where(team.name.eq("teamA"))
+                .fetch();
+
+        Assertions.assertThat(result)
+                .extracting("username")
+                .containsExactly("member1", "member2");
+    }
+
+    @Test
+    public void join_on_filtering() {
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(member.team, team)
+                .on(team.name.eq("teamA")) //leftJoin 일 경우만 사용, 그 외에는 where 절로 해결을 볼 것, null 값을 받을 수 있고, 없고 차이인 듯
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+
+        }
+    }
+
 }
