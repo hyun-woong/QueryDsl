@@ -10,7 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 import javax.persistence.PersistenceContext;
+import javax.persistence.PersistenceUnit;
 import javax.transaction.Transactional;
 import java.util.List;
 
@@ -252,6 +254,7 @@ public class QuerydslBasicTest {
                 .containsExactly("member1", "member2");
     }
 
+    //on 절 사용 예제
     @Test
     public void join_on_filtering() {
         List<Tuple> result = queryFactory
@@ -265,6 +268,55 @@ public class QuerydslBasicTest {
             System.out.println("tuple = " + tuple);
 
         }
+    }
+
+    // 회원의 이름이 팀 이른과 같은 대상 외부 조인(연관관계 없는 테이블 join 할 경우)
+    @Test
+    public void join_on_no_relation() {
+        em.persist(new Member("teamA"));
+        em.persist(new Member("teamB"));
+        em.persist(new Member("teamC"));
+
+        List<Tuple> result = queryFactory
+                .select(member, team)
+                .from(member)
+                .leftJoin(team).on(member.username.eq(team.name))
+                .fetch();
+
+        for (Tuple tuple : result) {
+            System.out.println("tuple = " + tuple);
+        }
+    }
+
+    @PersistenceUnit
+    EntityManagerFactory emf;
+    @Test
+    public void fetchJoinNo() {
+        em.flush();
+        em.clear();
+
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .where(member.username.eq("member1"))
+                .fetchOne();
+
+        boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        Assertions.assertThat(loaded).as("페치 조인 미적용").isFalse();
+    }
+
+    @Test
+    public void fetchJoinUse() {
+        em.flush();
+        em.clear();
+
+        Member findMember = queryFactory
+                .selectFrom(member)
+                .join(member.team, team).fetchJoin()
+                .where(member.username.eq("member1"))
+                .fetchOne();
+
+        boolean loaded = emf.getPersistenceUnitUtil().isLoaded(findMember.getTeam());
+        Assertions.assertThat(loaded).as("페치 조인 미적용").isTrue();
     }
 
 }
